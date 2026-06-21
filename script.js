@@ -467,3 +467,153 @@ if (writingsPage) {
     closeCustomSelects();
   });
 }
+
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const tryPlayVideo = (video) => {
+  if (!video || !video.paused) return;
+  video.muted = true;
+  video.setAttribute("muted", "");
+  const attempt = video.play();
+  if (attempt && typeof attempt.catch === "function") {
+    attempt.catch(() => {});
+  }
+};
+
+const autoplayVideos = document.querySelectorAll("video[autoplay]");
+autoplayVideos.forEach((video) => {
+  video.muted = true;
+  video.setAttribute("muted", "");
+  if (video.readyState >= 2) {
+    tryPlayVideo(video);
+  }
+  video.addEventListener("loadeddata", () => tryPlayVideo(video));
+  video.addEventListener("canplay", () => tryPlayVideo(video));
+});
+
+const pageLoader = document.querySelector(".page-loader");
+const minLoaderTime = 150;
+const loaderStart = performance.now();
+
+const hidePageLoader = () => {
+  if (!pageLoader) {
+    document.body.classList.add("is-loaded");
+    autoplayVideos.forEach(tryPlayVideo);
+    return;
+  }
+  const elapsed = performance.now() - loaderStart;
+  const wait = Math.max(0, minLoaderTime - elapsed);
+  setTimeout(() => {
+    pageLoader.classList.add("is-hidden");
+    document.body.classList.add("is-loaded");
+    autoplayVideos.forEach(tryPlayVideo);
+    setTimeout(() => {
+      pageLoader.remove();
+      autoplayVideos.forEach(tryPlayVideo);
+    }, 400);
+  }, wait);
+};
+
+if (document.readyState === "complete") {
+  hidePageLoader();
+} else {
+  window.addEventListener("DOMContentLoaded", hidePageLoader);
+  setTimeout(hidePageLoader, 4000);
+}
+
+const revealSelectors = [
+  ".home-content > *",
+  ".home-portrait-panel",
+  ".home-featured",
+  ".home-card",
+  ".home-cards-row",
+  ".home-footer",
+  ".profile-hero",
+  ".profile-section",
+  ".profile-section > *",
+  ".profile-media-grid > *",
+  ".profile-recognition-list > *",
+  ".una-hero",
+  ".una-section",
+  ".una-section > *",
+  ".kabulmun-section",
+  ".kabulmun-section > *",
+  ".nycp-section",
+  ".nycp-section > *",
+  ".yps-section",
+  ".yps-section > *",
+  ".article-hero",
+  ".article-body > *",
+  ".writings-controls",
+  ".writing-card",
+  ".connect-hero",
+  ".connect-card",
+  ".connect-section > *"
+];
+
+const revealCandidates = new Set();
+revealSelectors.forEach((selector) => {
+  document.querySelectorAll(selector).forEach((element) => revealCandidates.add(element));
+});
+
+const sectionStaggerParents = [
+  ".home-cards-row",
+  ".profile-media-grid",
+  ".profile-recognition-list",
+  ".home-logo-strip",
+  ".connect-section"
+];
+
+sectionStaggerParents.forEach((selector) => {
+  document.querySelectorAll(selector).forEach((parent) => {
+    [...parent.children].forEach((child, index) => {
+      if (index > 0 && index <= 5) {
+        child.dataset.revealDelay = String(index);
+      }
+    });
+  });
+});
+
+revealCandidates.forEach((element) => {
+  element.classList.add("reveal");
+});
+
+if (prefersReducedMotion) {
+  revealCandidates.forEach((element) => element.classList.add("is-visible"));
+} else if ("IntersectionObserver" in window) {
+  const revealObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+  );
+  revealCandidates.forEach((element) => revealObserver.observe(element));
+} else {
+  revealCandidates.forEach((element) => element.classList.add("is-visible"));
+}
+
+if (!prefersReducedMotion) {
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("a[href]");
+    if (!link) return;
+    const href = link.getAttribute("href");
+    if (!href) return;
+    if (href.startsWith("#") || href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+    if (link.target === "_blank" || link.hasAttribute("download")) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    document.body.classList.add("is-leaving");
+    setTimeout(() => { window.location.href = href; }, 220);
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      document.body.classList.remove("is-leaving");
+    }
+  });
+}
