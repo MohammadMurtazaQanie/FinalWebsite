@@ -58,6 +58,8 @@
       try {
         if (localStorage.getItem("yahyaqanie.homeTheme") === "dark") {
           document.documentElement.classList.add("site-dark-pending");
+          document.documentElement.style.setProperty("--loader-bg", "#111113");
+          document.documentElement.style.setProperty("--loader-text", "rgba(231, 228, 222, 0.85)");
         }
       } catch (error) {}
     </script>
